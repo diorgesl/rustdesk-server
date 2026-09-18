@@ -403,6 +403,7 @@ impl RendezvousServer {
                                         peer.pk,
                                     );
                                     drop(peer);
+                                    log::info!("DIAG: RegisterPk returning UUID_MISMATCH (ip/pk mismatch)");
                                     return send_rk_res(socket, addr, UUID_MISMATCH).await;
                                 }
                             } else {
@@ -413,6 +414,7 @@ impl RendezvousServer {
                                     peer.uuid
                                 );
                                 drop(peer);
+                                log::info!("DIAG: RegisterPk returning UUID_MISMATCH (uuid mismatch)");
                                 return send_rk_res(socket, addr, UUID_MISMATCH).await;
                             }
                             let ip_changed = peer.info.ip != ip;
@@ -426,6 +428,7 @@ impl RendezvousServer {
                     if req_pk.1.elapsed().as_secs() > 6 {
                         req_pk.0 = 0;
                     } else if req_pk.0 > 2 {
+                        log::info!("DIAG: RegisterPk returning TOO_FREQUENT, req_pk.0={}", req_pk.0);
                         return send_rk_res(socket, addr, TOO_FREQUENT).await;
                     }
                     req_pk.0 += 1;
@@ -458,7 +461,10 @@ impl RendezvousServer {
                         result: register_pk_response::Result::OK.into(),
                         ..Default::default()
                     });
-                    socket.send(&msg_out, addr).await?
+                    log::info!("DIAG: RegisterPk about to send OK to {:?}", addr);
+                    let send_res = socket.send(&msg_out, addr).await;
+                    log::info!("DIAG: RegisterPk send OK result: {:?}", send_res.is_ok());
+                    send_res?
                 }
                 Some(rendezvous_message::Union::PunchHoleRequest(ph)) => {
                     // UDP PunchHoleRequest is intentionally unsupported.
