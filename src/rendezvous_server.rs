@@ -352,7 +352,7 @@ impl RendezvousServer {
         key: &str,
     ) -> ResultType<()> {
         if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(bytes) {
-            log::info!("DIAG: udp parsed union = {:?}", msg_in.union.is_some());
+            log::info!("DIAG: udp parsed union = {:?}", msg_in.union);
             match msg_in.union {
                 Some(rendezvous_message::Union::RegisterPeer(rp)) => {
                     // B registered
@@ -371,16 +371,21 @@ impl RendezvousServer {
                     }
                 }
                 Some(rendezvous_message::Union::RegisterPk(rk)) => {
+                    log::info!("DIAG: RegisterPk id={:?} uuid_empty={} pk_empty={}", rk.id, rk.uuid.is_empty(), rk.pk.is_empty());
                     if rk.uuid.is_empty() || rk.pk.is_empty() {
+                        log::info!("DIAG: RegisterPk early return, empty uuid/pk");
                         return Ok(());
                     }
                     let id = rk.id;
                     let ip = addr.ip().to_string();
                     if id.len() < 6 {
+                        log::info!("DIAG: RegisterPk id too short: {:?}", id);
                         return send_rk_res(socket, addr, UUID_MISMATCH).await;
                     } else if !self.check_ip_blocker(&ip, &id).await {
+                        log::info!("DIAG: RegisterPk TOO_FREQUENT for ip={}", ip);
                         return send_rk_res(socket, addr, TOO_FREQUENT).await;
                     }
+                    log::info!("DIAG: RegisterPk passed checks, id={} ip={}", id, ip);
                     let peer = self.pm.get_or(&id).await;
                     let (changed, ip_changed) = {
                         let peer = peer.read().await;
