@@ -276,6 +276,7 @@ impl RendezvousServer {
                 res = socket.next() => {
                     match res {
                         Some(Ok((bytes, addr))) => {
+                            log::info!("DIAG: udp recv {} bytes from {:?}", bytes.len(), addr);
                             if let Err(err) = self.handle_udp(&bytes, addr.into(), socket, key).await {
                                 log::error!("udp failure: {}", err);
                                 return LoopFailure::UdpSocket;
@@ -351,6 +352,7 @@ impl RendezvousServer {
         key: &str,
     ) -> ResultType<()> {
         if let Ok(msg_in) = RendezvousMessage::parse_from_bytes(bytes) {
+            log::info!("DIAG: udp parsed union = {:?}", msg_in.union.is_some());
             match msg_in.union {
                 Some(rendezvous_message::Union::RegisterPeer(rp)) => {
                     // B registered
@@ -496,6 +498,8 @@ impl RendezvousServer {
                 }
                 _ => {}
             }
+        } else {
+            log::warn!("DIAG: udp parse_from_bytes FAILED, {} bytes from {:?}", bytes.len(), addr);
         }
         Ok(())
     }
